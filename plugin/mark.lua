@@ -24,7 +24,7 @@ vim.api.nvim_create_user_command(
 	{
 		nargs = "*", -- Accepts zero or more arguments.
 		-- Custom completion function for the command.
-		complete = function(arglead, cmdline, cursorpos)
+		complete = function(_, cmdline, _)
 			local args = vim.split(cmdline, "%s+", { plain = true, trimempty = true })
 			if #args == 1 then
 				-- If only ":Mark" is typed, suggest subcommands.

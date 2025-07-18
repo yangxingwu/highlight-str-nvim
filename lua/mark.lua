@@ -103,17 +103,19 @@ local function apply_mark_to_buffer_literal(bufnr, mark_entry)
 			local start_pos, end_pos = string.find(line, pattern, col_start, true)
 			if start_pos then
 				-- Add an extmark for the found match.
-				local extmark_id = vim.api.nvim_buf_add_highlight(
+				local extmark_id = vim.api.nvim_buf_set_extmark(
 					bufnr,
 					mark_ns,
-					hl_group,
 					line_idx - 1, -- 0-indexed line number
 					start_pos - 1, -- 0-indexed column start
-					end_pos -- 0-indexed column end (exclusive)
+					{
+						end_col = end_pos, -- 0-indexed column end (exclusive)
+						hl_group = hl_group,
+					}
 				)
 				-- Store the extmark ID so we can clear it later.
 				table.insert(mark_entry.extmark_ids[bufnr], extmark_id)
-				col_start = end_pos -- Continue search from after the current match.
+				col_start = assert(end_pos) -- Continue search from after the current match.
 			else
 				break -- No more matches on this line.
 			end
@@ -143,13 +145,15 @@ local function apply_mark_to_buffer_regex(bufnr, mark_entry)
 		-- Use string.gmatch to find all matches of the regex in the line.
 		-- We capture the start and end positions using '().()' trick.
 		for match_start, match_end in string.gmatch(line, "().()." .. pattern) do
-			local extmark_id = vim.api.nvim_buf_add_highlight(
+			local extmark_id = vim.api.nvim_buf_set_extmark(
 				bufnr,
 				mark_ns,
-				hl_group,
 				current_line_idx,
 				match_start - 1, -- 0-indexed column start
-				match_end - 1 -- 0-indexed column end (exclusive)
+				{
+					end_col = match_end - 1, -- 0-indexed column end (exclusive)
+					hl_group = hl_group,
+				}
 			)
 			table.insert(mark_entry.extmark_ids[bufnr], extmark_id)
 		end
@@ -309,10 +313,10 @@ function M.mark_command(args)
 	local pattern = table.concat(vim.list_slice(args.fargs, 2), " ")
 
 	if cmd == "clear" then
-		if pattern and pattern:len() > 0 then
-			clear_mark(pattern)
-		else
+		if pattern and pattern:len() == 0 then -- Changed from > 0 to == 0 to allow :Mark clear
 			clear_all_marks()
+		else
+			clear_mark(pattern)
 		end
 	elseif cmd == "list" then
 		list_marks()
